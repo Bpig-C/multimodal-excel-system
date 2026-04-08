@@ -1,0 +1,10 @@
+管理员：
+admin/admin123 (ID: 1)
+
+浏览员：
+browser/browser123 (ID: 2)
+
+标注员：
+annotationer/annotationer123 (ID: 4)
+
+注意：所有账号都在 backend/data/database/annotation.db 数据库中

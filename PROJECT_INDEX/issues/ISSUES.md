@@ -1,0 +1,1 @@
+- [QMS photo_path 被 skip_if_exists 永久跳过](issues/QMS_photo_path_skip_bug.md) — 图片后上传时 photo_path 无法更新，附语义重复和文件部分重叠机制说明

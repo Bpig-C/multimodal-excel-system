@@ -1,0 +1,26 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npx repomix@latest --config repomix.config.json --compress)",
+      "Bash(bash init_index.sh)",
+      "Bash(bash init_index.sh --run)",
+      "Bash(bash update_index.sh)",
+      "Bash(find . -maxdepth 3 -not -path */.* -not -path */node_modules/* -not -path */__pycache__/* -not -path */venv/* -not -path */.venv/* -not -path */env/* -not -path */dist/* -not -path */build/* -not -path */target/* -not -path */vendor/* -type f)",
+      "Bash(find . -not -path */.* -not -path */node_modules/* -not -path */__pycache__/* -not -path */venv/* -not -path */.venv/* -not -path */env/* -not -path */dist/* -not -path */build/* -not -path */target/* -not -path */vendor/* -not -path */htmlcov/* -type f)",
+      "Bash(python -c \":*)",
+      "Bash(python:*)",
+      "Bash(curl -s -X POST http://localhost:8000/api/v1/auth/login -H \"Content-Type: application/json\" -d '{\"\"username\"\":\"\"admin\"\",\"\"password\"\":\"\"admin123\"\"}')",
+      "Bash(curl -s http://localhost:8000/health)",
+      "Bash(pkill -f \"uvicorn main:app\")",
+      "Bash(pkill -f \"uvicorn\")",
+      "Bash(npx tsc:*)",
+      "Bash(npx vue-tsc:*)",
+      "Bash(npm install:*)",
+      "Bash(./node_modules/.bin/tsc --noEmit)",
+      "Bash(find D:03_projectsmaster2025_to_2026electronic_info_manufacturing_corpus -name *.xlsx)"
+    ],
+    "additionalDirectories": [
+      "D:\\03_projects\\master\\2025_to_2026\\electronic_info_manufacturing_corpus\\industry_entities_annotation\\PROJECT_INDEX\\history"
+    ]
+  }
+}

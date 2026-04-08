@@ -1,0 +1,58 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+env/
+ENV/
+*.egg-info/
+dist/
+build/
+
+# Node
+*/node_modules/
+dist/
+.DS_Store
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Environment
+.env
+.env.local
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+
+# Data
+data/uploads/*
+data/images/*
+data/exports/*
+!data/uploads/.gitkeep
+!data/images/.gitkeep
+!data/exports/.gitkeep
+*.png
+*.jpg
+*.jpeg
+*.sql
+参考项目代码/
+# Logs
+*.log
+logs/
+
+# Test
+.pytest_cache/
+.coverage
+htmlcov/
+.vitest/
+
+# OS
+Thumbs.db
+.DS_Store

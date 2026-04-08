@@ -1,0 +1,48 @@
+{
+  "output": {
+    "filePath": "PROJECT_INDEX/history\\multimodal_excel_system_{datetime}.md",
+    "style": "markdown",
+    "showDirectoryStructure": true
+  },
+  "compression": {
+    "enabled": true,
+    "keepSignatures": true,
+    "keepDocstrings": true,
+    "keepInterfaces": true
+  },
+  "ignore": {
+    "customPatterns": [
+      "**/*.md",
+      "**/*.json",
+      "**/*.log",
+      "**/*.png",
+      "**/*.jpg",
+      "**/*.jpeg",
+      "**/*.db",
+      "**/*.xlsx",
+      "**/*.bat",
+      "htmlcov/**",
+      "logs/**",
+      "backend/logs/**",
+      "backend/htmlcov/**",
+      "backend/data/images/**",
+      "backend/data/database/**",
+      "data/**",
+      "frontend/node_modules/**",
+      "frontend/dist/**",
+      "frontend/pnpm-lock.yaml",
+      "frontend/package-lock.json",
+      "PROJECT_INDEX/**",
+      "参考项目代码/**",
+      "**/test*/**",
+      "**/*_test.py",
+      "**/*_tests.py",
+      "**/__tests__/**",
+      "backend/test_*.py",
+      "backend/tmp*.txt",
+      ".*/**"
+    ],
+    "useGitignore": true,
+    "useDefaultIgnore": true
+  }
+}
