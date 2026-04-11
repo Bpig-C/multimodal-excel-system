@@ -280,6 +280,39 @@ python test_tasks_12_to_16.py
 4. 推送到分支 (`git push origin feature/AmazingFeature`)
 5. 开启Pull Request
 
+## 部署到 Vercel（前端）
+
+本项目采用前后端分离部署：**前端 → Vercel**，**后端 → 自有服务器 / Railway / Render**。
+
+### 前端部署步骤
+
+1. 在 Vercel 导入仓库时，将 **Root Directory** 设置为 `frontend`
+
+2. Vercel 会自动识别 Vite 框架，构建命令和输出目录无需手动配置（已在 `frontend/vercel.json` 中定义）
+
+3. 在 Vercel 项目的 **Settings → Environment Variables** 中添加：
+
+   | 变量名 | 说明 | 示例值 |
+   |--------|------|--------|
+   | `VITE_BACKEND_ORIGIN` | 后端服务的完整 URL（**必填**） | `https://your-backend.railway.app` |
+   | `VITE_API_BASE_URL` | API 路径前缀（默认值已够用，可不填） | `/api/v1` |
+
+4. 点击 **Deploy** 即可
+
+### 后端部署说明
+
+后端使用 FastAPI + SQLite + 本地文件存储，**不适合直接部署到 Vercel**（无持久化文件系统）。  
+推荐部署到以下平台之一：
+- **Railway**：支持 Python，有免费额度，`railway up` 一键部署
+- **Render**：支持 Python Web Service
+- **自有服务器**：`uvicorn main:app --host 0.0.0.0 --port 18080`
+
+后端部署后，将其 URL 填入 Vercel 的 `VITE_BACKEND_ORIGIN` 环境变量。
+
+> **跨域说明**：前端从 Vercel 域名访问后端时，需确保后端已配置 CORS 允许 Vercel 域名（`https://your-app.vercel.app`）。
+
+---
+
 ## License
 
 MIT
