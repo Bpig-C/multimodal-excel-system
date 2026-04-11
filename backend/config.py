@@ -45,11 +45,19 @@ class Settings:
     DEBUG: bool = True
 
     # Server
-    HOST: str = "0.0.0.0"
-    PORT: int = 8000
+    HOST: str = os.getenv("HOST", "0.0.0.0")
+    PORT: int = int(os.getenv("PORT", "18080"))
 
-    # CORS
-    CORS_ORIGINS: list = ["http://localhost:5173", "http://localhost:3000"]
+    # CORS — 开发环境默认允许 localhost；生产环境通过 CORS_ORIGINS 环境变量追加
+    # 格式：逗号分隔的 URL 列表，如 "https://your-app.vercel.app,https://your-domain.com"
+    CORS_ORIGINS: list = (
+        ["http://localhost:5173", "http://localhost:3000"]
+        + [
+            origin.strip()
+            for origin in os.getenv("CORS_ORIGINS", "").split(",")
+            if origin.strip()
+        ]
+    )
 
     # Database
     DATABASE_URL: str = normalize_database_url(os.getenv("DATABASE_URL"))
