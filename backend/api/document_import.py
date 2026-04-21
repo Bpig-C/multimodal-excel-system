@@ -69,6 +69,7 @@ def _import_processed_records(
     skipped_records = 0
     failed_records = 0
     error_samples = []
+    skipped_samples: list[str] = []  # 被跳过记录的 event_id 样本（最多 5 条）
 
     for json_file in json_files:
         records = parser.parse_json_file(str(json_file))
@@ -90,6 +91,8 @@ def _import_processed_records(
                     inserted_records += 1
                 else:
                     skipped_records += 1
+                    if len(skipped_samples) < 5 and record_id:
+                        skipped_samples.append(str(record_id))
             except Exception as exc:
                 failed_records += 1
                 db.rollback()
@@ -107,6 +110,16 @@ def _import_processed_records(
                 continue
 
     database_records = _count_imported_records_by_source(db, processor_name, data_source)
+    logger.info(
+        "导入汇总: processor=%s data_source=%s total=%d inserted=%d skipped=%d failed=%d db_total=%d",
+        processor_name, data_source,
+        total_records, inserted_records, skipped_records, failed_records, database_records,
+    )
+    if skipped_records > 0:
+        logger.info(
+            "跳过原因：记录已存在于数据库（按 event_id 或内容哈希去重）。"
+            "如需强制覆盖，请先删除该数据源后重新导入。"
+        )
     if total_records > 0 and inserted_records == 0 and database_records == 0:
         raise HTTPException(
             status_code=500,
@@ -123,6 +136,7 @@ def _import_processed_records(
         "failed_records": failed_records,
         "database_records": database_records,
         "error_samples": error_samples,
+        "skipped_samples": skipped_samples,
         "processed_files": len(json_files),
     }
 

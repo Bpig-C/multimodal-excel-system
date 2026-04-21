@@ -90,8 +90,7 @@ const handleLogin = async () => {
     try {
       await authStore.login(loginForm.username, loginForm.password)
       ElMessage.success('登录成功')
-      
-      // 跳转到重定向页面或首页
+
       const redirect = route.query.redirect as string
       router.push(redirect || '/')
     } catch (error: any) {

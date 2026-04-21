@@ -37,12 +37,12 @@ def override_get_db():
         db.close()
 
 
-app.dependency_overrides[get_db] = override_get_db
 client = TestClient(app)
 
 
 @pytest.fixture(scope="module", autouse=True)
 def setup_database():
+    app.dependency_overrides[get_db] = override_get_db
     """设置测试数据库"""
     # 创建表
     Base.metadata.create_all(bind=engine)

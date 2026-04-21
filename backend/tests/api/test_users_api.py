@@ -37,7 +37,6 @@ def override_get_db():
         db.close()
 
 
-app.dependency_overrides[get_db] = override_get_db
 
 client = TestClient(app)
 
@@ -66,6 +65,7 @@ def print_test(test_name: str):
 
 @pytest.fixture(scope="module", autouse=True)
 def setup_module():
+    app.dependency_overrides[get_db] = override_get_db
     """模块级别的数据库设置 - 只在模块开始和结束时执行"""
     # 创建所有表
     Base.metadata.drop_all(bind=engine)

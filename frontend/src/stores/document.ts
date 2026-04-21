@@ -212,17 +212,44 @@ export const useDocumentStore = defineStore('document', () => {
     exportProgress.value = {
       ...createTransferState(),
       phase: 'processing',
-      message: '正在打包导出文件...'
+      message: '正在查询导出信息...'
     }
 
     try {
+      // Step 1: 预查询总大小，给进度条提供 total
+      let expectedTotal = 0
+      let recordCount = 0
+      try {
+        const info = await documentApi.batchExportInfo(currentProcessor.value, params)
+        expectedTotal = info.total_bytes ?? 0
+        recordCount = info.record_count ?? 0
+      } catch {
+        // info 查询失败不阻塞下载，退化为无进度模式
+      }
+
+      exportProgress.value = {
+        ...createTransferState(),
+        phase: 'processing',
+        message: recordCount > 0
+          ? `正在打包 ${recordCount} 条记录...`
+          : '正在打包导出文件...'
+      }
+
       const blob = await documentApi.batchExport(currentProcessor.value, params, {
         onDownloadProgress: (progress) => {
+          // 用 expectedTotal 补齐 total（服务端无 Content-Length）
+          const patched: TransferProgress = expectedTotal > 0
+            ? {
+                loaded: progress.loaded,
+                total: expectedTotal,
+                percentage: Math.min(99, Math.round(progress.loaded / expectedTotal * 100))
+              }
+            : progress
           updateTransferState(
             exportProgress,
-            progress,
+            patched,
             'downloading',
-            progress.total ? '正在下载导出文件...' : '导出文件已生成，正在接收数据...'
+            expectedTotal > 0 ? '正在下载导出文件...' : '导出文件已生成，正在接收数据...'
           )
         }
       })

@@ -201,12 +201,25 @@ export const documentApi = {
   },
 
   /**
+   * 预查询批量导出大小（用于进度条初始化）
+   */
+  batchExportInfo(processorName: string, params: BatchExportParams): Promise<{
+    total_bytes: number
+    record_count: number
+    image_count: number
+  }> {
+    return request.post(`/export/corpus/${processorName}/batch/info`, params, {
+      timeout: 60000  // 图片目录扫描 + 采样序列化，最多 60s
+    })
+  },
+
+  /**
    * 批量导出（返回ZIP文件流）
    */
   batchExport(processorName: string, params: BatchExportParams, options?: TransferProgressOptions): Promise<Blob> {
     return request.post<Blob>(`/export/corpus/${processorName}/batch`, params, {
       responseType: 'blob',
-      timeout: 300000, // 大文件导出单独设 5 分钟超时
+      timeout: 0, // 大文件下载不限超时，由流式传输保证连接活跃
       onDownloadProgress: options?.onDownloadProgress
         ? (event) => options.onDownloadProgress?.(toTransferProgress(event))
         : undefined

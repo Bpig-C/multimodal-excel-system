@@ -40,12 +40,12 @@ def override_get_db():
         db.close()
 
 
-app.dependency_overrides[get_db] = override_get_db
 client = TestClient(app)
 
 
 @pytest.fixture(scope="module", autouse=True)
 def setup_database():
+    app.dependency_overrides[get_db] = override_get_db
     """模块级别的数据库设置"""
     # 确保先删除旧表
     Base.metadata.drop_all(bind=engine)

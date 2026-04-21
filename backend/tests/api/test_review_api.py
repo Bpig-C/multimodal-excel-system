@@ -40,11 +40,11 @@ def override_get_db():
         db.close()
 
 
-app.dependency_overrides[get_db] = override_get_db
 
 
 @pytest.fixture(scope="module", autouse=True)
 def setup_and_teardown():
+    app.dependency_overrides[get_db] = override_get_db
     """测试前后的设置和清理"""
     Base.metadata.create_all(bind=engine)
     yield

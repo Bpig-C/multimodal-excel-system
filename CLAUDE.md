@@ -26,4 +26,9 @@ npx repomix@latest --config repomix.config.json --compress
 - 前端：Vue 3 + TypeScript + Element Plus + Pinia + Vite
 - LLM：Qwen-Max（DashScope API）
 
-**核心进度**：16/46 核心任务完成 (35%)
+**核心进度**：42/47 核心任务完成 (~89%)
+
+- 后端全部完成（Tasks 1-26）
+- 前端核心完成（Tasks 27-38, 41-43, 47）
+- 跳过：Task 39（数据导出前端）、Task 40（Reward数据集前端）
+- 待完成：Task 44（系统集成测试）、Task 45（文档/部署）、Task 46（最终检查）

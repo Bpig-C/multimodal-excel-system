@@ -51,6 +51,12 @@ class StructuredExportService:
             return match.group(1)
         return None
 
+    @staticmethod
+    def _record_image_paths(record: Dict) -> List[str]:
+        """Collect normalized image paths from export record metadata."""
+        raw_paths = record.get('_image_paths') or []
+        return [str(path).strip() for path in raw_paths if str(path).strip()]
+
     def _generate_sample_id(self, record: Dict, index: int, format_type: str) -> str:
         """生成唯一样本ID"""
         event_id_field = self.config.event_id_field
@@ -300,6 +306,9 @@ class StructuredExportService:
 
                 image_path = self._extract_image_path(record.get(images_field, ''))
                 if not image_path:
+                    record_paths = self._record_image_paths(record)
+                    image_path = record_paths[0] if record_paths else None
+                if not image_path:
                     continue
 
                 full_image_path = f"{record_data_source}/{image_path}"
@@ -348,6 +357,9 @@ class StructuredExportService:
                 record_data_source = record.get('_data_source', data_source or 'unknown')
 
                 image_path = self._extract_image_path(record.get(images_field, ''))
+                if not image_path:
+                    record_paths = self._record_image_paths(record)
+                    image_path = record_paths[0] if record_paths else None
                 full_image_path = f"{record_data_source}/{image_path}" if image_path else None
 
                 # 构建assistant回答
@@ -435,9 +447,20 @@ class StructuredExportService:
                 if not data_source:
                     continue
 
-                # 优先从记录的图片字段提取具体文件名
                 raw_img = record.get(images_field, '')
-                img_rel = self._extract_image_path(raw_img)  # e.g. "imgs/ID_xxx.png"
+                image_rel_paths = self._record_image_paths(record)
+                img_rel = self._extract_image_path(raw_img)
+                if img_rel:
+                    image_rel_paths = [img_rel, *[path for path in image_rel_paths if path != img_rel]]
+
+                if self.processor_name == 'failure_case':
+                    for rel_path in image_rel_paths:
+                        local_path = settings.IMAGE_DIR / rel_path
+                        if local_path.exists():
+                            normalized_rel_path = rel_path.replace('\\', '/')
+                            zip_path = f"images/{normalized_rel_path}"
+                            collected[zip_path] = local_path
+                    continue
 
                 if img_rel:
                     local_path = settings.PROCESSED_DIR / self.processor_name / data_source / img_rel
@@ -445,7 +468,6 @@ class StructuredExportService:
                         zip_path = f"images/{data_source}/{img_rel}"
                         collected[zip_path] = local_path
                 else:
-                    # 没有具体文件名时，把整个 imgs/ 目录下的图片全部打包
                     imgs_dir = settings.PROCESSED_DIR / self.processor_name / data_source / 'imgs'
                     if imgs_dir.exists():
                         for f in imgs_dir.iterdir():

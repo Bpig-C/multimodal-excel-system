@@ -35,6 +35,7 @@ dist/
 data/uploads/*
 data/images/*
 data/exports/*
+data/processed/*
 !data/uploads/.gitkeep
 !data/images/.gitkeep
 !data/exports/.gitkeep

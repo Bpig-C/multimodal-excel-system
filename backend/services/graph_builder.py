@@ -1,10 +1,13 @@
 ﻿"""KF knowledge graph builder."""
 import hashlib
 import json
+import logging
 from datetime import datetime
 from typing import Dict, Optional
 
 from sqlalchemy.orm import Session
+
+logger = logging.getLogger(__name__)
 
 from models.db_models import (
     Customer,
@@ -17,11 +20,14 @@ from models.db_models import (
 
 
 def _compute_kf_content_hash(entities: Dict) -> str:
-    """计算 KF 条目的内容哈希（排除 id/data_source/images 等非业务字段）。"""
+    """计算 KF 条目的整行内容哈希，作为唯一去重依据。
+    包含快反编号本身，确保同一编号+不同业务内容产生不同哈希。
+    """
     event = entities.get("event", {})
     product = entities.get("product", {})
     root_cause = entities.get("root_cause", {})
     parts = [
+        str(event.get("id") or ""),              # 快反编号
         str(event.get("occurrence_time") or ""),
         str(event.get("problem_analysis") or ""),
         str(event.get("short_term_measure") or ""),
@@ -47,27 +53,20 @@ class GraphBuilder:
         """
         Build graph nodes and relationships.
 
-        去重策略：
-        1. 若 event_id 非空，以主键查重（唯一键优先）
-        2. 以内容哈希兜底，防止相同内容用不同 id 重复写入
+        去重策略：仅以整行内容哈希去重。
+        快反编号不作为主键，同一编号的不同记录可独立存储；
+        完全相同内容的重复行（哈希碰撞）才被跳过。
 
         Returns:
             True if inserted, False if skipped as duplicate.
         """
-        event_id = entities["event"]["id"]
+        event_id = entities["event"].get("id")
         content_hash = _compute_kf_content_hash(entities)
 
         if skip_if_exists:
-            # 唯一键优先
-            if event_id:
-                existing = db.query(QuickResponseEvent).filter_by(id=event_id).first()
-                if existing:
-                    return False
-            # 内容哈希兜底
-            existing_by_hash = db.query(QuickResponseEvent).filter_by(
-                content_hash=content_hash
-            ).first()
-            if existing_by_hash:
+            existing = db.query(QuickResponseEvent).filter_by(content_hash=content_hash).first()
+            if existing:
+                logger.debug("跳过重复记录(内容哈希已存在): event_id=%s hash=%s", event_id, content_hash[:8])
                 return False
 
         customer_id = self._insert_customer(db, entities["customer"])
@@ -207,9 +206,9 @@ class GraphBuilder:
         root_cause_id: int,
         four_m_id: int,
     ) -> None:
-        db.merge(
+        db.add(
             QuickResponseEvent(
-                id=event["id"],
+                event_id=event.get("id"),
                 content_hash=content_hash,
                 occurrence_time=self._parse_occurrence_time(event.get("occurrence_time")),
                 problem_analysis=event.get("problem_analysis"),

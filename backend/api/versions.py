@@ -13,6 +13,44 @@ router = APIRouter(prefix="/api/v1/versions", tags=["versions"])
 
 
 # ============================================================================
+# 版本比较API（必须在 /{task_id} 之前注册，否则被动态路由拦截）
+# ============================================================================
+
+@router.get("/compare")
+async def compare_versions(
+    task_id: str = Query(..., description="任务ID"),
+    version1: int = Query(..., description="版本1"),
+    version2: int = Query(..., description="版本2"),
+    db: Session = Depends(get_db)
+):
+    """
+    比较两个版本的差异
+
+    返回两个版本之间的详细差异信息,包括:
+    - 新增的实体、图片实体、关系
+    - 删除的实体、图片实体、关系
+    - 修改的实体、图片实体、关系
+    """
+    try:
+        service = VersionManagementService(db)
+        diff = service.compare_versions(
+            task_id=task_id,
+            version1=version1,
+            version2=version2
+        )
+
+        return {
+            "success": True,
+            "message": "版本比较成功",
+            "data": diff
+        }
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"版本比较失败: {str(e)}")
+
+
+# ============================================================================
 # 版本历史API
 # ============================================================================
 
@@ -24,13 +62,13 @@ async def get_version_history(
 ):
     """
     获取标注任务的版本历史
-    
+
     返回按时间倒序排列的版本历史列表
     """
     try:
         service = VersionManagementService(db)
         history = service.get_version_history(task_id, limit)
-        
+
         return {
             "success": True,
             "message": "获取版本历史成功",
@@ -59,7 +97,7 @@ async def rollback_version(
 ):
     """
     回滚到指定版本
-    
+
     注意:
     - 回滚前会自动创建当前版本的备份
     - 回滚后会创建新的版本记录
@@ -72,7 +110,7 @@ async def rollback_version(
             target_version=target_version,
             changed_by=changed_by
         )
-        
+
         if success:
             return {
                 "success": True,
@@ -91,44 +129,6 @@ async def rollback_version(
 
 
 # ============================================================================
-# 版本比较API
-# ============================================================================
-
-@router.get("/compare")
-async def compare_versions(
-    task_id: str = Query(..., description="任务ID"),
-    version1: int = Query(..., description="版本1"),
-    version2: int = Query(..., description="版本2"),
-    db: Session = Depends(get_db)
-):
-    """
-    比较两个版本的差异
-    
-    返回两个版本之间的详细差异信息,包括:
-    - 新增的实体、图片实体、关系
-    - 删除的实体、图片实体、关系
-    - 修改的实体、图片实体、关系
-    """
-    try:
-        service = VersionManagementService(db)
-        diff = service.compare_versions(
-            task_id=task_id,
-            version1=version1,
-            version2=version2
-        )
-        
-        return {
-            "success": True,
-            "message": "版本比较成功",
-            "data": diff
-        }
-    except ValueError as e:
-        raise HTTPException(status_code=404, detail=str(e))
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"版本比较失败: {str(e)}")
-
-
-# ============================================================================
 # 版本详情API
 # ============================================================================
 
@@ -140,33 +140,33 @@ async def get_version_detail(
 ):
     """
     获取指定版本的详细信息
-    
+
     返回该版本的完整快照数据
     """
     try:
         from models.db_models import AnnotationTask, VersionHistory
         import json
-        
+
         # 查询任务
         task = db.query(AnnotationTask).filter(
             AnnotationTask.task_id == task_id
         ).first()
-        
+
         if not task:
             raise HTTPException(status_code=404, detail="任务不存在")
-        
+
         # 查询版本
         version_history = db.query(VersionHistory)\
             .filter(VersionHistory.task_id == task.id)\
             .filter(VersionHistory.version == version)\
             .first()
-        
+
         if not version_history:
             raise HTTPException(status_code=404, detail=f"版本 {version} 不存在")
-        
+
         # 解析快照数据
         snapshot_data = json.loads(version_history.snapshot_data)
-        
+
         return {
             "success": True,
             "message": "获取版本详情成功",
@@ -201,7 +201,7 @@ async def create_version_snapshot(
 ):
     """
     手动创建版本快照
-    
+
     用于在重要操作前手动保存当前状态
     """
     try:
@@ -212,7 +212,7 @@ async def create_version_snapshot(
             change_description=change_description or '手动创建快照',
             changed_by=changed_by
         )
-        
+
         return {
             "success": True,
             "message": "版本快照创建成功",

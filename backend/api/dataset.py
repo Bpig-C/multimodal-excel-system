@@ -476,7 +476,12 @@ async def remove_task_from_dataset(
 ):
     """
     从数据集中删除一个标注任务及其关联语料绑定和全部标注数据
+    仅管理员可操作
     """
+    # 权限检查：仅管理员可删除任务
+    if current_user.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="仅管理员可删除任务")
+
     try:
         service = DatasetService(db)
         success = service.remove_task(dataset_id, task_id)

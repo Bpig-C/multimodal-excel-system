@@ -157,6 +157,8 @@ async def assign_dataset(
             data=assignment_info
         )
     
+    except HTTPException:
+        raise
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
@@ -230,6 +232,8 @@ async def auto_assign_dataset(
             }
         )
     
+    except HTTPException:
+        raise
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
@@ -286,6 +290,8 @@ async def cancel_assignment(
             message="取消分配成功"
         )
     
+    except HTTPException:
+        raise
     except ValueError as e:
         error_msg = str(e)
         
@@ -427,10 +433,10 @@ async def batch_assign(
             message=f"批量分配成功，共创建 {created_count} 个分配"
         )
     
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
     except HTTPException:
         raise
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
         import traceback
         traceback.print_exc()
@@ -544,8 +550,6 @@ async def clear_assignments(
             message=f"已清空 {count} 个分配"
         )
     
-    except HTTPException:
-        raise
     except Exception as e:
         import traceback
         print(f"[清空分配] 发生错误:")
@@ -603,6 +607,8 @@ async def cancel_assignment(
             message="取消分配成功"
         )
     
+    except HTTPException:
+        raise
     except ValueError as e:
         error_msg = str(e)
         
@@ -674,6 +680,8 @@ async def transfer_assignment(
             data=result
         )
     
+    except HTTPException:
+        raise
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except NotImplementedError as e:
@@ -758,7 +766,7 @@ async def get_dataset_assignments(
                 "reviewer_count": reviewer_count
             }
         )
-    
+
     except HTTPException:
         raise
     except Exception as e:

@@ -1,4 +1,4 @@
-﻿<template>
+<template>
   <div class="data-list">
     <div class="page-header">
       <div class="header-left">
@@ -106,6 +106,7 @@ import { ref, computed, onMounted, watch } from 'vue'
 import { ElMessage } from 'element-plus'
 import { useDocumentStore } from '@/stores/document'
 import { documentApi } from '@/api/document'
+import { buildBackendUrl } from '@/utils/backendUrl'
 
 const store = useDocumentStore()
 
@@ -174,7 +175,6 @@ const pageSize = ref(50)
 const pageSizeOptions = [20, 50, 100, 200]
 
 const processorFieldMapping = ref<Record<string, string>>({})
-const apiBaseUrl = import.meta.env.VITE_API_BASE_URL.replace(/\/api\/v1\/?$/, '')
 const hiddenColumns = new Set([
   'image_paths',
   'image_preview_urls',
@@ -205,9 +205,7 @@ function getColumnLabel(column: string) {
 
 function toAbsoluteImageUrl(path: string) {
   if (!path) return ''
-  if (/^https?:\/\//i.test(path)) return path
-  const normalized = path.startsWith('/') ? path : `/${path}`
-  return `${apiBaseUrl}${normalized}`
+  return buildBackendUrl(path)
 }
 
 function getRowImageUrls(row: any): string[] {

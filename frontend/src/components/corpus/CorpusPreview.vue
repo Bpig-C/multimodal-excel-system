@@ -40,7 +40,7 @@
     <!-- 语料列表 -->
     <div v-loading="loading" class="corpus-list">
       <el-empty v-if="!loading && list.length === 0" description="暂无语料数据" />
-      
+
       <div
         v-for="item in list"
         :key="item.text_id"
@@ -81,7 +81,7 @@
             @click="handlePreviewImage(image)"
           >
             <el-image
-              :src="`${apiBaseUrl}/images/${image.file_path}`"
+              :src="getImageUrl(image.file_path)"
               :alt="image.original_name"
               fit="cover"
               lazy
@@ -134,7 +134,7 @@
     >
       <el-image
         v-if="previewImage"
-        :src="`${apiBaseUrl}/images/${previewImage.file_path}`"
+        :src="getImageUrl(previewImage.file_path)"
         :alt="previewImage.original_name"
         fit="contain"
         style="width: 100%"
@@ -149,13 +149,12 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import { Document, Picture, Search } from '@element-plus/icons-vue'
 import { useCorpusStore } from '@/stores'
 import type { Corpus, Image } from '@/types'
+import { buildBackendUrl } from '@/utils/backendUrl'
 
 const corpusStore = useCorpusStore()
 
-// API基础URL（去掉/api/v1后缀）
-const apiBaseUrl = import.meta.env.VITE_API_BASE_URL.replace('/api/v1', '')
+const getImageUrl = (filePath: string) => buildBackendUrl(`/images/${filePath}`)
 
-// 状态
 const searchFileName = ref('')
 const selectedType = ref('')
 const showOnlyWithImages = ref(false)
@@ -164,13 +163,11 @@ const pageSize = ref(20)
 const previewVisible = ref(false)
 const previewImage = ref<Image | null>(null)
 
-// 计算属性
 const loading = computed(() => corpusStore.loading)
 const list = computed(() => corpusStore.corpusList)
 const total = computed(() => corpusStore.total)
 const filteredCount = computed(() => list.value.length)
 
-// 方法
 const fetchList = async () => {
   await corpusStore.fetchList({
     page: currentPage.value,
@@ -191,7 +188,6 @@ const handlePageChange = () => {
 }
 
 const handleView = (item: Corpus) => {
-  // TODO: 跳转到详情页或打开详情对话框
   console.log('查看详情:', item)
 }
 
@@ -209,12 +205,11 @@ const handleDelete = async (item: Corpus) => {
 
     await corpusStore.deleteCorpus(item.text_id)
     ElMessage.success('删除成功')
-    
-    // 如果当前页没有数据了，返回上一页
+
     if (list.value.length === 0 && currentPage.value > 1) {
       currentPage.value--
     }
-    
+
     fetchList()
   } catch (error: any) {
     if (error !== 'cancel') {
@@ -229,12 +224,10 @@ const handlePreviewImage = (image: Image) => {
   previewVisible.value = true
 }
 
-// 生命周期
 onMounted(() => {
   fetchList()
 })
 
-// 暴露方法供父组件调用
 defineExpose({
   refresh: fetchList
 })

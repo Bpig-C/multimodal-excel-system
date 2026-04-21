@@ -103,7 +103,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { ElMessage } from 'element-plus'
 import { Refresh } from '@element-plus/icons-vue'
 import { useDocumentStore } from '@/stores/document'
@@ -147,6 +147,42 @@ const formatBytes = (bytes?: number | null) => {
   return `${value.toFixed(value >= 10 || unitIndex === 0 ? 0 : 1)} ${units[unitIndex]}`
 }
 
+const formatEta = (seconds: number): string => {
+  if (!isFinite(seconds) || seconds <= 0) return ''
+  if (seconds < 60) return `约 ${Math.ceil(seconds)} 秒`
+  if (seconds < 3600) return `约 ${Math.ceil(seconds / 60)} 分钟`
+  return `约 ${(seconds / 3600).toFixed(1)} 小时`
+}
+
+// Download speed tracking
+const downloadStartTime = ref(0)
+const downloadSpeed = ref(0) // bytes/sec
+
+watch(
+  () => store.exportProgress.phase,
+  (phase) => {
+    if (phase !== 'downloading') {
+      downloadStartTime.value = 0
+      downloadSpeed.value = 0
+    }
+  }
+)
+
+watch(
+  () => store.exportProgress.loaded,
+  (loaded) => {
+    if (store.exportProgress.phase !== 'downloading' || loaded <= 0) return
+    if (downloadStartTime.value === 0) {
+      downloadStartTime.value = Date.now()
+      return
+    }
+    const elapsed = (Date.now() - downloadStartTime.value) / 1000
+    if (elapsed > 0.5) {
+      downloadSpeed.value = loaded / elapsed
+    }
+  }
+)
+
 const resolveProgressStatus = (phase: string): 'success' | 'exception' | undefined => {
   if (phase === 'success') return 'success'
   if (phase === 'exception') return 'exception'
@@ -163,11 +199,21 @@ const exportProgressText = computed(() => {
   }
 
   if (state.phase === 'downloading') {
-    if (state.total) {
-      return `已下载 ${formatBytes(state.loaded)} / ${formatBytes(state.total)} (${state.percentage}%)`
+    const speedStr = downloadSpeed.value > 1024
+      ? `${formatBytes(downloadSpeed.value)}/s`
+      : ''
+
+    if (state.total && state.total > 0) {
+      const eta = downloadSpeed.value > 0
+        ? formatEta((state.total - state.loaded) / downloadSpeed.value)
+        : ''
+      const etaPart = eta ? `  ${eta}` : ''
+      const speedPart = speedStr ? `  ${speedStr}` : ''
+      return `已下载 ${formatBytes(state.loaded)} / ${formatBytes(state.total)} (${state.percentage}%)${speedPart}${etaPart}`
     }
 
-    return `正在接收导出文件，已下载 ${formatBytes(state.loaded)}`
+    const speedPart = speedStr ? `  ${speedStr}` : ''
+    return `正在接收导出文件，已下载 ${formatBytes(state.loaded)}${speedPart}`
   }
 
   return state.message

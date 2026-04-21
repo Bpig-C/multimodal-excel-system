@@ -98,6 +98,7 @@
 </template>
 
 <script setup lang="ts">
+import axios from 'axios'
 import { ref, computed, onMounted, h } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
@@ -108,6 +109,7 @@ import DatasetCreateDialog from '@/components/dataset/DatasetCreateDialog.vue'
 import DatasetEditDialog from '@/components/dataset/DatasetEditDialog.vue'
 import BatchAnnotationDialog from '@/components/dataset/BatchAnnotationDialog.vue'
 import type { Dataset, DatasetStatus } from '@/types'
+import { buildApiUrl } from '@/utils/backendUrl'
 
 const router = useRouter()
 const datasetStore = useDatasetStore()
@@ -255,16 +257,13 @@ const handleDelete = async (dataset: Dataset) => {
   }
 }
 
-import axios from 'axios'
 const handleExport = async (dataset: Dataset) => {
   try {
     const fallbackFilename = `${dataset.dataset_id}_${Date.now()}.jsonl`
     const requestedOutputPath = `data/exports/${fallbackFilename}`
 
     // 直接POST导出接口，获取blob
-    const apiBase = import.meta.env.VITE_API_BASE_URL as string
-    const backendOrigin = new URL(apiBase).origin
-    const url = `${backendOrigin}/api/v1/datasets/${dataset.dataset_id}/export`
+    const url = buildApiUrl(`/datasets/${dataset.dataset_id}/export`)
 
     const token = localStorage.getItem('token') || sessionStorage.getItem('token')
     const headers: Record<string, string> = {

@@ -121,15 +121,8 @@
             <el-table-column prop="data_source" label="数据源" width="120" show-overflow-tooltip />
             <el-table-column prop="table_count" label="表格数" width="80" align="center" />
             <el-table-column prop="processed_time" label="处理时间" width="160" show-overflow-tooltip />
-            <el-table-column label="操作" width="180" fixed="right">
+            <el-table-column label="操作" width="90" fixed="right">
               <template #default="{ row }">
-                <el-button
-                  type="primary"
-                  size="small"
-                  @click="handleImport(row)"
-                >
-                  导入图谱数据库
-                </el-button>
                 <el-button
                   type="danger"
                   size="small"
@@ -267,12 +260,11 @@ const formatTips: Record<string, FormatTip> = {
       '问题图片',
       '短期改善措施',
       '长期改善措施',
-      '所属分类',
       '客户名称',
       '产品型号',
       '缺陷类型不良现象'
     ],
-    aliasTip: '兼容常见旧字段别名，例如：短期措施 -> 短期改善措施，长期措施 -> 长期改善措施，问题描述 -> 问题原因及分析。'
+    aliasTip: '兼容常见旧字段别名，例如：短期措施 -> 短期改善措施，长期措施 -> 长期改善措施，问题描述 -> 问题原因及分析。所属分类为可选字段，旧版文件可缺失。'
   },
   qms: {
     title: 'QMS 不合格品文件格式要求',
@@ -425,6 +417,38 @@ const handleUpload = async () => {
       return
     }
 
+    // KF / QMS：有跳过记录时给出说明
+    if (result.skipped_records > 0) {
+      const inserted = result.inserted_records ?? 0
+      const skipped = result.skipped_records ?? 0
+      const total = result.total_records ?? 0
+      const samples: string[] = result.skipped_samples ?? []
+
+      const sampleLine = samples.length
+        ? `<br/><span style="color:#909399;font-size:12px;">跳过示例（内容完全相同）：${samples.join('、')}${skipped > samples.length ? ` 等 ${skipped} 条` : ''}</span>`
+        : ''
+
+      await ElMessageBox.alert(
+        `<div>
+          <p style="margin:0 0 10px">文件共 <b>${total}</b> 条记录：</p>
+          <p style="margin:0 0 6px;color:#67c23a">✔ 新增写入：<b>${inserted}</b> 条</p>
+          <p style="margin:0 0 6px;color:#e6a23c">↩ 跳过（内容重复）：<b>${skipped}</b> 条</p>
+          ${sampleLine}
+          <p style="margin:12px 0 0;font-size:12px;color:#909399">
+            跳过的记录与数据库中已有记录内容完全相同（整行哈希一致），属于正常去重，数据没有丢失。
+            如需强制覆盖，请先删除该数据源后重新导入。
+          </p>
+        </div>`,
+        '导入完成',
+        {
+          dangerouslyUseHTMLString: true,
+          confirmButtonText: '知道了',
+          type: inserted > 0 ? 'success' : 'warning'
+        }
+      )
+      return
+    }
+
     ElMessage.success(result.message || '上传成功')
   } catch (error: any) {
     ElMessage.error(error?.message || '上传失败')
@@ -440,20 +464,6 @@ const handleProcessorChange = async (value: string) => {
 
 const handleRefreshFiles = () => {
   store.fetchProcessedFiles()
-}
-
-const handleImport = async (row: { data_source: string }) => {
-  try {
-    const result = await store.importJsonData(row.data_source)
-
-    if (result.success) {
-      ElMessage.success(`导入成功，新增 ${result.inserted_records} 条记录`)
-    } else {
-      ElMessage.error(result.message || '导入失败')
-    }
-  } catch (error: any) {
-    ElMessage.error(error?.message || '导入失败')
-  }
 }
 
 const handleDelete = async (row: { data_source: string }) => {

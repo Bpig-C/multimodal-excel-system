@@ -1,148 +1,199 @@
 """
-版本管理API测试 (Task 18)
-测试版本管理API端点
+版本管理API集成测试（重写）
+
+覆盖接口：
+  GET    /api/v1/versions/{task_id}              版本历史列表
+  GET    /api/v1/versions/{task_id}/{version}    版本详情
+  POST   /api/v1/versions/{task_id}/snapshot     手动创建版本快照
+  POST   /api/v1/versions/{task_id}/rollback     回滚到指定版本
+  GET    /api/v1/versions/compare                版本对比
 """
 import sys
-import os
+from pathlib import Path
 
-# 添加backend目录到Python路径
-backend_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-sys.path.insert(0, backend_dir)
+sys.path.insert(0, str(Path(__file__).parent.parent.parent))
+sys.path.insert(0, str(Path(__file__).parent))
 
+import pytest
+from fastapi.testclient import TestClient
+from main import app
+from database import Base, get_db
+from models.db_models import (
+    User, Corpus, Dataset, DatasetCorpus, AnnotationTask,
+    TextEntity, Relation, VersionHistory, ReviewTask, DatasetAssignment
+)
+from conftest import (
+    make_test_db, get_db_override, login, auth,
+    create_user, create_corpus, create_dataset, create_task, truncate_all
+)
 
-def test_imports():
-    """测试导入"""
-    print("1. 测试版本管理API导入...")
-    try:
-        from api.versions import router
-        print("✓ 版本管理API导入成功")
-    except Exception as e:
-        print(f"✗ 导入失败: {e}")
-
-        raise
-
-
-def test_router_endpoints():
-    """测试路由端点"""
-    print("\n2. 测试路由端点...")
-    try:
-        from api.versions import router
-        
-        # 获取所有路由
-        routes = [route.path for route in router.routes]
-        
-        print(f"✓ 找到 {len(routes)} 个路由端点")
-        
-        # 检查关键端点
-        expected_endpoints = [
-            "/api/v1/versions/{task_id}",
-            "/api/v1/versions/{task_id}/rollback",
-            "/api/v1/versions/compare",
-        ]
-        
-        for endpoint in expected_endpoints:
-            matching = [r for r in routes if endpoint in r or r.startswith(endpoint.split('{')[0])]
-            if matching:
-                print(f"  ✓ {endpoint}")
-            else:
-                print(f"  ✗ 缺少端点: {endpoint}")
-    except Exception as e:
-        print(f"✗ 路由端点测试失败: {e}")
-
-        raise
+# ── 模块级 DB 初始化 ──────────────────────────────────────────────────────────
+engine, SL = make_test_db("test_versions_integration.db")
+client = TestClient(app)
 
 
-def test_api_methods():
-    """测试API方法"""
-    print("\n3. 测试API方法...")
-    try:
-        from api.versions import router
-        
-        # 统计不同HTTP方法的端点数量
-        methods_count = {}
-        for route in router.routes:
-            for method in route.methods:
-                methods_count[method] = methods_count.get(method, 0) + 1
-        
-        print("✓ API方法统计:")
-        for method, count in sorted(methods_count.items()):
-            print(f"  - {method}: {count}个端点")
-        
-        # 验证至少有GET和POST方法
-        required_methods = ['GET', 'POST']
-        for method in required_methods:
-            if method in methods_count:
-                print(f"  ✓ 包含{method}方法")
-            else:
-                print(f"  ✗ 缺少{method}方法")
-
-                raise
-    except Exception as e:
-        print(f"✗ API方法测试失败: {e}")
-
-        raise
+@pytest.fixture(scope="module", autouse=True)
+def setup_module():
+    app.dependency_overrides[get_db] = get_db_override(SL)
+    Base.metadata.drop_all(bind=engine)
+    Base.metadata.create_all(bind=engine)
+    yield
+    Base.metadata.drop_all(bind=engine)
 
 
-def test_api_registration():
-    """测试API注册"""
-    print("\n4. 测试API注册...")
-    try:
-        from api import versions_router
-        print("✓ 版本管理路由已在api包中注册")
-    except Exception as e:
-        print(f"✗ API注册测试失败: {e}")
-
-        raise
+@pytest.fixture(scope="function", autouse=True)
+def cleanup():
+    yield
+    truncate_all(SL)
 
 
-def test_service_integration():
-    """测试服务集成"""
-    print("\n5. 测试服务集成...")
-    try:
-        from api.versions import router
-        from services.version_management_service import VersionManagementService
-        
-        print("  ✓ VersionManagementService集成")
-        print("✓ 服务集成正常")
-    except Exception as e:
-        print(f"✗ 服务集成测试失败: {e}")
+# ── 公共 fixtures ─────────────────────────────────────────────────────────────
 
-        raise
+@pytest.fixture(scope="function")
+def task_ctx():
+    """创建一个任务用于版本测试"""
+    admin_id = create_user(SL, "admin", "admin123", "admin")
+    corpus_id = create_corpus(SL, "CORP_VER_001", "版本测试语料")
+    ds_id = create_dataset(SL, "ds-ver-001", "版本测试数据集", admin_id)
+    task_db_id = create_task(SL, "task-ver-001", ds_id, corpus_id)
+    return {"task_str_id": "task-ver-001", "task_db_id": task_db_id}
 
 
-def main():
-    """运行所有测试"""
-    print("=" * 60)
-    print("Task 18: 版本管理API测试")
-    print("=" * 60)
-    
-    tests = [
-        test_imports,
-        test_router_endpoints,
-        test_api_methods,
-        test_api_registration,
-        test_service_integration,
-    ]
-    
-    results = []
-    for test in tests:
-        try:
-            result = test()
-            results.append(result)
-        except Exception as e:
-            print(f"✗ 测试执行失败: {e}")
-            results.append(False)
-    
-    print("\n" + "=" * 60)
-    if all(results):
-        print("✓ 所有测试通过!")
-    else:
-        print(f"✗ {results.count(False)} 个测试失败")
-    print("=" * 60)
-    
-    return all(results)
+# ── 版本历史 ──────────────────────────────────────────────────────────────────
+
+def test_get_version_history_empty(task_ctx):
+    """新建任务版本历史为空"""
+    resp = client.get(f"/api/v1/versions/{task_ctx['task_str_id']}")
+    assert resp.status_code == 200
+    data = resp.json()["data"]
+    assert data["task_id"] == "task-ver-001"
+    assert data["total"] == 0
+    assert data["versions"] == []
+
+
+def test_get_version_history_task_not_found():
+    """不存在的任务返回 404"""
+    resp = client.get("/api/v1/versions/task-nonexistent")
+    assert resp.status_code == 404
+
+
+# ── 创建快照 ──────────────────────────────────────────────────────────────────
+
+def test_create_version_snapshot(task_ctx):
+    """手动创建版本快照成功"""
+    resp = client.post(
+        f"/api/v1/versions/{task_ctx['task_str_id']}/snapshot",
+        json={"change_description": "测试快照"}
+    )
+    assert resp.status_code == 200
+    data = resp.json()["data"]
+    assert "history_id" in data
+    assert data["task_id"] == "task-ver-001"
+    assert data["version"] >= 1
+
+
+def test_create_snapshot_and_list(task_ctx):
+    """创建快照后历史列表中可以查到"""
+    client.post(
+        f"/api/v1/versions/{task_ctx['task_str_id']}/snapshot",
+        json={"change_description": "第一次快照"}
+    )
+    client.post(
+        f"/api/v1/versions/{task_ctx['task_str_id']}/snapshot",
+        json={"change_description": "第二次快照"}
+    )
+
+    resp = client.get(f"/api/v1/versions/{task_ctx['task_str_id']}")
+    assert resp.status_code == 200
+    data = resp.json()["data"]
+    assert data["total"] >= 2
+
+
+def test_create_snapshot_task_not_found():
+    """对不存在的任务创建快照返回 404"""
+    resp = client.post(
+        "/api/v1/versions/task-nonexistent/snapshot",
+        json={"change_description": "不应成功"}
+    )
+    assert resp.status_code == 404
+
+
+# ── 版本详情 ──────────────────────────────────────────────────────────────────
+
+def test_get_version_detail(task_ctx):
+    """获取版本详情包含快照数据"""
+    snap_resp = client.post(
+        f"/api/v1/versions/{task_ctx['task_str_id']}/snapshot",
+        json={"change_description": "详情测试快照"}
+    )
+    version_num = snap_resp.json()["data"]["version"]
+
+    resp = client.get(f"/api/v1/versions/{task_ctx['task_str_id']}/{version_num}")
+    assert resp.status_code == 200
+    data = resp.json()["data"]
+    assert data["version"] == version_num
+    assert "snapshot" in data
+
+
+def test_get_version_detail_not_found(task_ctx):
+    """不存在的版本号返回 404"""
+    resp = client.get(f"/api/v1/versions/{task_ctx['task_str_id']}/9999")
+    assert resp.status_code == 404
+
+
+# ── 版本比较 ──────────────────────────────────────────────────────────────────
+
+def test_compare_versions(task_ctx):
+    """两个版本之间的对比"""
+    v1 = client.post(
+        f"/api/v1/versions/{task_ctx['task_str_id']}/snapshot",
+        json={"change_description": "对比-v1"}
+    ).json()["data"]["version"]
+
+    v2 = client.post(
+        f"/api/v1/versions/{task_ctx['task_str_id']}/snapshot",
+        json={"change_description": "对比-v2"}
+    ).json()["data"]["version"]
+
+    resp = client.get(
+        "/api/v1/versions/compare",
+        params={"task_id": task_ctx["task_str_id"], "version1": v1, "version2": v2}
+    )
+    assert resp.status_code == 200
+    assert resp.json()["success"] is True
+
+
+# ── 版本回滚 ──────────────────────────────────────────────────────────────────
+
+def test_rollback_version(task_ctx):
+    """回滚到历史版本"""
+    v1 = client.post(
+        f"/api/v1/versions/{task_ctx['task_str_id']}/snapshot",
+        json={"change_description": "回滚目标"}
+    ).json()["data"]["version"]
+
+    # 再创建一个快照
+    client.post(
+        f"/api/v1/versions/{task_ctx['task_str_id']}/snapshot",
+        json={"change_description": "当前版本"}
+    )
+
+    resp = client.post(
+        f"/api/v1/versions/{task_ctx['task_str_id']}/rollback",
+        json={"target_version": v1}
+    )
+    assert resp.status_code == 200
+    assert resp.json()["data"]["target_version"] == v1
+
+
+def test_rollback_nonexistent_task():
+    """对不存在任务回滚返回 404"""
+    resp = client.post(
+        "/api/v1/versions/task-nonexistent/rollback",
+        json={"target_version": 1}
+    )
+    assert resp.status_code == 404
 
 
 if __name__ == "__main__":
-    success = main()
-    sys.exit(0 if success else 1)
+    pytest.main([__file__, "-v", "-s"])

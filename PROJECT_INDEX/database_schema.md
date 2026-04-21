@@ -299,7 +299,9 @@
 ### qms_defect_orders - QMS不合格品记录表
 | 字段 | 类型 | 说明 |
 |------|------|------|
-| id | VARCHAR(100) | 主键（非自增） |
+| id | INTEGER | 主键，自增 |
+| order_id | VARCHAR(100) | 制令单号（非唯一，同一制令单号可对应多条记录）|
+| content_hash | VARCHAR(64) | 整行内容哈希，唯一约束，作为去重依据 |
 | entry_time | VARCHAR(255) | 录入时间 |
 | model | VARCHAR(255) | 型号 |
 | barcode | VARCHAR(255) | 条码 |

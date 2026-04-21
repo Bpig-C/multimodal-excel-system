@@ -11,12 +11,15 @@ from models.db_models import (
 
 
 def _compute_qms_content_hash(entities: Dict) -> str:
-    """计算 QMS 条目的内容哈希（排除 id/data_source/photo_path 等非业务字段）。"""
+    """计算 QMS 条目的整行内容哈希，作为唯一去重依据。
+    包含制令单号本身，确保同一制令单号+不同业务内容产生不同哈希。
+    """
     event = entities.get("event", {})
     product = entities.get("product", {})
     production = entities.get("production", {})
     inspection = entities.get("inspection", {})
     parts = [
+        str(event.get("id") or ""),              # 制令单号
         str(event.get("occurrence_time") or ""),
         str(event.get("status") or ""),
         str(entities.get("customer") or ""),
@@ -40,29 +43,20 @@ class QMSGraphBuilder:
         """
         构建 QMS 图谱节点和关系
 
-        去重策略：
-        1. 若制令单号非空，以主键查重（唯一键优先）
-        2. 以内容哈希兜底，防止相同内容用不同制令单号重复写入
+        去重策略：仅以整行内容哈希去重。
+        制令单号不作为主键，同一制令单号的不同缺陷记录可独立存储；
+        完全相同内容的重复行（哈希碰撞）才被跳过。
 
         Returns:
             True=新插入，False=已存在被跳过
         """
-        event_id = entities['event']['id']
-        if not event_id:
-            raise ValueError("制令单号为空，无法导入")
+        order_id = entities['event'].get('id')
 
         content_hash = _compute_qms_content_hash(entities)
 
         if skip_if_exists:
-            # 唯一键优先
-            existing = db.query(QMSDefectOrder).filter_by(id=event_id).first()
+            existing = db.query(QMSDefectOrder).filter_by(content_hash=content_hash).first()
             if existing:
-                return False
-            # 内容哈希兜底
-            existing_by_hash = db.query(QMSDefectOrder).filter_by(
-                content_hash=content_hash
-            ).first()
-            if existing_by_hash:
                 return False
 
         customer_id = self._upsert_one(db, Customer, 'name', entities.get('customer'))
@@ -82,8 +76,8 @@ class QMSGraphBuilder:
         images = event.get('images', [])
         photo_path = images[0] if images else None
 
-        db.merge(QMSDefectOrder(
-            id=event_id,
+        db.add(QMSDefectOrder(
+            order_id=order_id,
             content_hash=content_hash,
             entry_time=event.get('occurrence_time'),
             model=prod.get('model'),

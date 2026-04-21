@@ -86,9 +86,10 @@ def process_excel_file(src_file_path: str, output_dir: str = None):
     from .config import COLUMN_MAPPINGS
 
     # KF 必要列（排除 DEFAULT_VALUES 中允许缺失的可选字段）
+    # 注意：'所属分类' 为可选列，部分旧版文件缺失该列，不强制要求
     REQUIRED_COLUMNS = [
         '快反编号', '发生时间', '问题原因及分析', '问题图片',
-        '短期改善措施', '长期改善措施', '所属分类',
+        '短期改善措施', '长期改善措施',
         '客户名称', '产品型号', '缺陷类型不良现象',
     ]
 

@@ -412,8 +412,9 @@ class QuickResponseEvent(Base):
     """快反事件表"""
     __tablename__ = "quick_response_events"
 
-    id = Column(String(100), primary_key=True)  # 主键为String类型（非自增）
-    content_hash = Column(String(64), unique=True, nullable=True)  # 内容哈希，用于去重兜底
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    event_id = Column(String(100), nullable=True)  # 快反编号，非唯一，同一编号可对应多条记录
+    content_hash = Column(String(64), unique=True, nullable=True)  # 整行内容哈希，唯一约束，作为去重依据
     occurrence_time = Column(DateTime)
     problem_analysis = Column(Text)
     short_term_measure = Column(Text)
@@ -489,8 +490,9 @@ class QMSDefectOrder(Base):
     """QMS不合格品记录表"""
     __tablename__ = "qms_defect_orders"
 
-    id = Column(String(100), primary_key=True)  # 主键为String类型（非自增）
-    content_hash = Column(String(64), unique=True, nullable=True)  # 内容哈希，用于去重兜底
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    order_id = Column(String(100), nullable=True)  # 制令单号，非唯一，同一单号可对应多条缺陷记录
+    content_hash = Column(String(64), unique=True, nullable=True)  # 全行内容哈希，唯一约束，用于去重
     entry_time = Column(String(255))
     model = Column(String(255))
     barcode = Column(String(255))

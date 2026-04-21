@@ -9,6 +9,8 @@ from pathlib import Path
 from typing import Dict, Optional
 import logging
 
+from database import SessionLocal
+from models.db_models import Corpus
 from processors import get_processor
 from utils.file_utils import sanitize_filename
 from config import settings
@@ -187,6 +189,44 @@ class DocumentProcessor:
         self.file_hashes = self._load_hashes()
         logger.info(f"重新加载哈希记录，当前数量: {len(self.file_hashes)}")
 
+    def _get_failure_case_record_count(self, record: Dict) -> int:
+        """从语料库中统计品质案例的实际记录数。"""
+        source_file = (record.get('original_filename') or '').strip()
+        if not source_file:
+            return 0
+
+        db = SessionLocal()
+        try:
+            return db.query(Corpus.source_row).filter(
+                Corpus.source_file == source_file,
+                Corpus.source_row.isnot(None)
+            ).distinct().count()
+        except Exception as e:
+            logger.error(f"[get_processed_files] 统计 failure_case 记录数失败: {source_file}, 错误: {e}")
+            return 0
+        finally:
+            db.close()
+
+    def _get_db_record_count(self, data_source: str) -> int:
+        """从数据库统计 kf/qms 处理器的实际写入记录数。"""
+        from models.db_models import QuickResponseEvent, QMSDefectOrder
+        db = SessionLocal()
+        try:
+            if self.processor_name == 'kf':
+                return db.query(QuickResponseEvent).filter(
+                    QuickResponseEvent.data_source == data_source
+                ).count()
+            if self.processor_name == 'qms':
+                return db.query(QMSDefectOrder).filter(
+                    QMSDefectOrder.data_source == data_source
+                ).count()
+            return 0
+        except Exception as e:
+            logger.error(f"[get_processed_files] 统计DB记录数失败: {data_source}, 错误: {e}")
+            return 0
+        finally:
+            db.close()
+
     def get_processed_files(self) -> list:
         """获取已处理文件列表"""
         result = []
@@ -198,7 +238,11 @@ class DocumentProcessor:
             output_dir = Path(record['output_dir'])
             record_count = 0
 
-            if output_dir.exists():
+            if self.processor_name == 'failure_case':
+                record_count = self._get_failure_case_record_count(record)
+            elif self.processor_name in ('kf', 'qms'):
+                record_count = self._get_db_record_count(record['data_source'])
+            elif output_dir.exists():
                 json_files = list(sorted(output_dir.glob('page_*.json')))
                 for json_file in json_files:
                     try:

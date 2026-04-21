@@ -27,7 +27,6 @@
         <el-option label="采取措施" value="采取措施" />
       </el-select>
 
-
       <el-checkbox v-model="showOnlyWithImages" :disabled="showOnlyWithoutImages" @change="onShowWithImagesChange">
         仅显示包含图片的语料
       </el-checkbox>
@@ -43,7 +42,7 @@
     <!-- 分组列表 -->
     <div v-loading="loading" class="grouped-list">
       <el-empty v-if="!loading && list.length === 0" description="暂无语料数据" />
-      
+
       <!-- 每一行Excel数据作为一个卡片 -->
       <el-card
         v-for="row in list"
@@ -100,7 +99,7 @@
               <span class="text-id">{{ item.text_id }}</span>
             </div>
             <div class="field-text">{{ item.text }}</div>
-            
+
             <!-- 该字段的图片 -->
             <div v-if="item.images && item.images.length > 0" class="field-images">
               <div
@@ -110,7 +109,7 @@
                 @click="handlePreviewImage(image)"
               >
                 <el-image
-                  :src="`${apiBaseUrl}/images/${image.file_path}`"
+                  :src="getImageUrl(image.file_path)"
                   :alt="image.original_name"
                   fit="cover"
                   lazy
@@ -149,7 +148,7 @@
     >
       <el-image
         v-if="previewImage"
-        :src="`${apiBaseUrl}/images/${previewImage.file_path}`"
+        :src="getImageUrl(previewImage.file_path)"
         :alt="previewImage.original_name"
         fit="contain"
         style="width: 100%"
@@ -164,11 +163,10 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import { Document, Picture, Search } from '@element-plus/icons-vue'
 import { request } from '@/api/request'
 import type { Image } from '@/types'
+import { buildBackendUrl } from '@/utils/backendUrl'
 
-// API基础URL
-const apiBaseUrl = import.meta.env.VITE_API_BASE_URL.replace('/api/v1', '')
+const getImageUrl = (filePath: string) => buildBackendUrl(`/images/${filePath}`)
 
-// 类型定义
 interface GroupedCorpusItem {
   text_id: string
   text: string
@@ -186,7 +184,6 @@ interface GroupedCorpusRow {
   created_at: string
 }
 
-// 状态
 const loading = ref(false)
 const list = ref<GroupedCorpusRow[]>([])
 const total = ref(0)
@@ -200,7 +197,6 @@ const previewVisible = ref(false)
 const previewImage = ref<Image | null>(null)
 const deletingKey = ref<string | null>(null)
 
-// 方法
 const fetchList = async () => {
   loading.value = true
   try {
@@ -225,7 +221,6 @@ const fetchList = async () => {
   }
 }
 
-
 const handleFilterChange = () => {
   currentPage.value = 1
   fetchList()
@@ -235,6 +230,7 @@ const onShowWithImagesChange = () => {
   if (showOnlyWithImages.value) showOnlyWithoutImages.value = false
   handleFilterChange()
 }
+
 const onShowWithoutImagesChange = () => {
   if (showOnlyWithoutImages.value) showOnlyWithImages.value = false
   handleFilterChange()
@@ -246,7 +242,6 @@ const handlePageChange = () => {
 
 const handleViewRow = (row: GroupedCorpusRow) => {
   console.log('查看行详情:', row)
-  // TODO: 实现详情查看
 }
 
 const handleDeleteRow = async (row: GroupedCorpusRow) => {
@@ -274,7 +269,6 @@ const handleDeleteRow = async (row: GroupedCorpusRow) => {
     fetchList()
   } catch (error: any) {
     const msg = error?.response?.data?.detail || '删除失败'
-    // 提示但降低警示级别
     ElMessage.warning(msg)
   } finally {
     deletingKey.value = null
@@ -315,12 +309,10 @@ const handlePreviewImage = (image: Image) => {
   previewVisible.value = true
 }
 
-// 生命周期
 onMounted(() => {
   fetchList()
 })
 
-// 暴露方法供父组件调用
 defineExpose({
   refresh: fetchList
 })
